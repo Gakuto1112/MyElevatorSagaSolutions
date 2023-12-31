@@ -1,0 +1,2 @@
+# MyElevatorSagaSolutions
+エレベーターを制御して提示された制限内に乗客を輸送するプログラミングゲーム「Elevator Saga」での自分なりの解答です。
