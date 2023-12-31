@@ -17,7 +17,7 @@ export interface ElevatorSaga {
 	 * @param elevators このチャレンジで利用可能なエレベーターのオブジェクトの配列
 	 * @param floors このチャレンジにある各階のオブジェクトの配列
 	 */
-	init: (elevators: Elevator[], floors: Floor[]) => void;
+	init(elevators: Elevator[], floors: Floor[]): void;
 
 	/**
 	 * チャレンジの実行中に繰り返し実行される関数
@@ -25,7 +25,7 @@ export interface ElevatorSaga {
 	 * @param elevators このチャレンジで利用可能なエレベーターのオブジェクトの配列
 	 * @param floors このチャレンジにある各階のオブジェクトの配列
 	 */
-	update: (dt: number, elevators: Elevator[], floors: Floor[]) => void;
+	update(dt: number, elevators: Elevator[], floors: Floor[]): void;
 }
 
 /**
@@ -37,20 +37,20 @@ export interface Elevator {
 	 * @param floorNum エレベーターを停める階
 	 * @param immediately `true`にすると現在の予約リストに割り込んで、最優先でその指定した階にエレベーターを向かわせる。
 	 */
-	goToFloor: (floorNum: number, immediately? : boolean) => void;
+	goToFloor(floorNum: number, immediately? : boolean): void;
 
 	/**
 	 * エレベーターの予約リストを消去し、直ちにエレベーターを停止させる。
 	 * この命令は高度な制御で利用されるものであり、通常は使用しないことに注意すること。
 	 * また、エレベーターが階の途中で停止する場合もあり、その場合は乗客は乗降しない。
 	 */
-	stop: () => void;
+	stop(): void;
 
 	/**
 	 * エレベーターが現在いる階を返す。
 	 * @returns エレベーターが現在いる階
 	 */
-	currentFloor: () => number;
+	currentFloor(): number;
 
 	/**
 	 * エレベーターの上昇表示の状態を取得又は設定する。
@@ -58,7 +58,7 @@ export interface Elevator {
 	 * @param indicatorLit 設定するエレベーターの上昇表示
 	 * @returns 取得したエレベーターの上昇表示
 	 */
-	goingUpIndicator: (indicatorLit: boolean) => boolean;
+	goingUpIndicator(indicatorLit: boolean): boolean;
 
 	/**
 	 * エレベーターの下降表示の状態を取得又は設定する。
@@ -72,19 +72,19 @@ export interface Elevator {
 	 * このエレベーターの一度に乗車可能な人数を返す。
 	 * @returns このエレベーターの一度に乗車可能な人数
 	 */
-	maxPassengerCount: () => number;
+	maxPassengerCount(): number;
 
 	/**
 	 * エレベーターの負荷率を返す。
 	 * @returns エレベーターの負荷率。この値は0~1で表され、0は誰も乗っていない、1は満員を示す。この値は乗客の数に応じて変化し、正確な指標ではない。
 	 */
-	loadFactor: () => number;
+	loadFactor(): number;
 
 	/**
 	 * 現在のエレベーターの移動方向を返す。
 	 * @returns 現在のエレベーターの移動方向
 	 */
-	destinationDirection: () => Direction;
+	destinationDirection(): Direction;
 
 	/**
 	 * エレベーターの行き先階の予約リスト
@@ -98,13 +98,13 @@ export interface Elevator {
 	 * 予約リストが変更されていないか確認する。
 	 * `destinationQueue`を自身で変更した場合のみに呼び出せばよい。
 	 */
-	checkDestinationQueue: () => void;
+	checkDestinationQueue(): void;
 
 	/**
 	 * エレベーター内で押された行き先階ボタンの配列を返す。
 	 * @returns エレベーター内で押された行き先階ボタンの配列
 	 */
-	getPressedFloors: () => number[];
+	getPressedFloors(): number[];
 
 	/**
 	 * エレベーターに関するイベント関数を登録する。
@@ -137,7 +137,7 @@ export interface Floor {
 	 * この階の番号を返す。
 	 * @returns 階の番号
 	 */
-	floorNum: () => number;
+	floorNum(): number;
 
 	/**
 	 * 各階それぞれに関するイベント関数を登録する。
