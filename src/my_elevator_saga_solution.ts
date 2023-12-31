@@ -100,7 +100,7 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 			elevator.on("floor_button_pressed", (floorNum: number) => {
 				const currentFloor: number = elevator.currentFloor();
 				const stepData: StepData = this.getElevatorSteps(elevator, floorNum, floorNum > currentFloor ? "up" : "down");
-				elevator.destinationQueue = elevator.destinationQueue.splice(stepData.queuePos, 0, floorNum);
+				elevator.destinationQueue.splice(stepData.queuePos, 0, floorNum);
 				elevator.checkDestinationQueue();
 			});
 		});
@@ -118,7 +118,7 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 				}
 
 				//エレベーターを手配
-				elevators[bestElevatorNum].destinationQueue = elevators[bestElevatorNum].destinationQueue.splice(stepData.queuePos, 0, floor);
+				elevators[bestElevatorNum].destinationQueue.splice(stepData.queuePos, 0, floor);
 				elevators[bestElevatorNum].checkDestinationQueue();
 			}
 
