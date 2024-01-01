@@ -72,7 +72,8 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 			if(direction == "stopped") return {steps: -1, queuePos: -1}; //エレベーターの移動方向の指定が不正であるため、空のデータを返す。
 			const targetDirectionNum: number = direction == "up" ? 1 : -1;
 			let currentDirectionNum: number = elevators[elevatorNum].goingUpIndicator() ? 1 : elevators[elevatorNum].goingDownIndicator() ? -1 : 0; //現在のエレベーターの移動方向
-			let currentFloorNum: number = elevators[elevatorNum].currentFloor(); //現在エレベーターがある階
+			const initialFloorNum: number = elevators[elevatorNum].currentFloor(); //初期状態のエレベーターがある階
+			let currentFloorNum: number = initialFloorNum //現在エレベーターがある階
 			let steps: number = 0;
 			let queuePos: number = 0;
 			const elevatorQueue: number[] = elevators[elevatorNum].destinationQueue.map((queue: number) => queue); //エレベーターの予約リストのコピー
@@ -81,7 +82,7 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 			while(elevatorQueue.length >= 1) {
 				//エレベーターが移動中
 				while(currentFloorNum != elevatorQueue[0]) {
-					if(currentFloorNum == targetFloorNum && currentDirectionNum == targetDirectionNum) return {steps: steps, queuePos: queuePos};
+					if(currentFloorNum == targetFloorNum && currentFloorNum != initialFloorNum && currentDirectionNum == targetDirectionNum) return {steps: steps, queuePos: queuePos};
 					currentFloorNum += currentDirectionNum;
 					steps++;
 				}
