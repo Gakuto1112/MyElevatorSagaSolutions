@@ -1,5 +1,6 @@
 import { Elevator, ElevatorSaga, Floor } from "./apis/elevator_saga";
 import { Direction } from "./apis/global_type";
+import { TestElevator } from "./tests/test_elevator";
 
 /**
  * 各階の呼び出しボタンの状態を保持するオブジェクト
@@ -55,91 +56,91 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 	private readonly floorButtons: FloorButtonData[] = [];
 
 	/**
+	 * 指定したエレベーターが目的の階に到着するまで要するステップ数を計算する。
+	 * @param elevatorNum 計算を行う対象のエレベーターのオブジェクト
+	 * @param targetFloorNum 目的の階
+	 * @param direction エレベーターが目的の階に停止する際のエレベーターの向き。"up"又は"down"のいずれか。
+	 * @returns エレベーターが目的の階に到着するまでの所要ステップ数と予約リストに入れるべき場所を含むオブジェクト
+	 */
+	public calcElevatorSteps(elevator: Elevator, targetFloorNum: number, direction: Direction) {
+		//変数の初期化など
+		if(direction == "stopped") return {steps: -1, queuePos: -1}; //エレベーターの移動方向の指定が不正であるため、空のデータを返す。
+		const targetDirectionNum: number = direction == "up" ? 1 : -1;
+		let currentDirectionNum: number = elevator.goingUpIndicator() ? 1 : elevator.goingDownIndicator() ? -1 : 0; //現在のエレベーターの移動方向
+		const initialFloorNum: number = elevator.currentFloor(); //初期状態のエレベーターがある階
+		let currentFloorNum: number = initialFloorNum //現在エレベーターがある階
+		let steps: number = 0;
+		let queuePos: number = 0;
+		const elevatorQueue: number[] = elevator.destinationQueue.map((queue: number) => queue); //エレベーターの予約リストのコピー
+
+		//予約リストを基にエレベーターを動かしてステップ数を求める。
+		while(elevatorQueue.length >= 1) {
+			//エレベーターが移動中
+			while(currentFloorNum != elevatorQueue[0]) {
+				if(currentFloorNum == targetFloorNum && currentFloorNum != initialFloorNum && currentDirectionNum == targetDirectionNum) return {steps: steps, queuePos: queuePos};
+				currentFloorNum += currentDirectionNum;
+				steps++;
+			}
+
+			//エレベーターが階で停止
+			if(currentFloorNum == targetFloorNum && currentDirectionNum == targetDirectionNum) return {steps: steps, queuePos: -1};
+			if(elevatorQueue.length >= 2) {
+				//エレベーターの向きを変えるかどうかを判断
+				if(currentDirectionNum == 1 && currentFloorNum > elevatorQueue[1]) {
+					//エレベーターが上端の折り返し階に到着
+					if(currentFloorNum < targetFloorNum) {
+						//エレベーターの上端の折り返し階よりも上に目的の階があるため、その階まで上昇する。
+						steps += targetFloorNum - currentFloorNum;
+						return {steps: steps, queuePos: queuePos};
+					}
+					else {
+						//エレベーターの向きが下に変わる。
+						currentDirectionNum = -1;
+						if(currentFloorNum == targetFloorNum && targetDirectionNum == -1) return {steps: steps, queuePos: -1};
+					}
+				}
+				else if(currentDirectionNum == -1 && currentFloorNum < elevatorQueue[1]) {
+					//エレベーターが下端の折り返し階に到着
+					if(currentFloorNum > targetFloorNum) {
+						//エレベーターの下端の折り返し階よりも下に目的の階があるため、その階まで下降する。
+						steps += currentFloorNum - targetFloorNum;
+						return {steps: steps, queuePos: queuePos};
+					}
+					else {
+						//エレベーターの向きが上に変わる。
+						currentDirectionNum = 1;
+						if(currentFloorNum == targetFloorNum && targetDirectionNum == 1) return {steps: steps, queuePos: -1};
+					}
+				}
+			}
+			elevatorQueue.shift();
+			queuePos++;
+			steps += 5; //エレベーターが停止中は5ステップ消費
+		}
+
+		//予約リストが空になった（既に空）ので目的の階まで向かう。
+		steps += Math.abs(targetFloorNum - currentFloorNum);
+		return {steps: steps, queuePos: queuePos};
+	}
+
+	/**
 	 * チャレンジの開始時に一度だけ実行される関数
 	 * @param elevators このチャレンジで利用可能なエレベーターのオブジェクトの配列
 	 * @param floors このチャレンジにある各階のオブジェクトの配列
 	 */
 	public init(elevators: Elevator[], floors: Floor[]): void {
 		/**
-		 * 指定したエレベーターが目的の階に到着するまで要するステップ数を計算する。
-		 * @param elevatorNum 計算を行う対象のエレベーターの番号
-		 * @param targetFloorNum 目的の階
-		 * @param direction エレベーターが目的の階に停止する際のエレベーターの向き。"up"又は"down"のいずれか。
-		 * @returns エレベーターが目的の階に到着するまでの所要ステップ数と予約リストに入れるべき場所を含むオブジェクト
-		 */
-		function calcElevatorSteps(elevatorNum: number, targetFloorNum: number, direction: Direction): StepData {
-			//変数の初期化など
-			if(direction == "stopped") return {steps: -1, queuePos: -1}; //エレベーターの移動方向の指定が不正であるため、空のデータを返す。
-			const targetDirectionNum: number = direction == "up" ? 1 : -1;
-			let currentDirectionNum: number = elevators[elevatorNum].goingUpIndicator() ? 1 : elevators[elevatorNum].goingDownIndicator() ? -1 : 0; //現在のエレベーターの移動方向
-			const initialFloorNum: number = elevators[elevatorNum].currentFloor(); //初期状態のエレベーターがある階
-			let currentFloorNum: number = initialFloorNum //現在エレベーターがある階
-			let steps: number = 0;
-			let queuePos: number = 0;
-			const elevatorQueue: number[] = elevators[elevatorNum].destinationQueue.map((queue: number) => queue); //エレベーターの予約リストのコピー
-
-			//予約リストを基にエレベーターを動かしてステップ数を求める。
-			while(elevatorQueue.length >= 1) {
-				//エレベーターが移動中
-				while(currentFloorNum != elevatorQueue[0]) {
-					if(currentFloorNum == targetFloorNum && currentFloorNum != initialFloorNum && currentDirectionNum == targetDirectionNum) return {steps: steps, queuePos: queuePos};
-					currentFloorNum += currentDirectionNum;
-					steps++;
-				}
-
-				//エレベーターが階で停止
-				if(currentFloorNum == targetFloorNum && currentDirectionNum == targetDirectionNum) return {steps: steps, queuePos: -1};
-				if(elevatorQueue.length >= 2) {
-					//エレベーターの向きを変えるかどうかを判断
-					if(currentDirectionNum == 1 && currentFloorNum > elevatorQueue[1]) {
-						//エレベーターが上端の折り返し階に到着
-						if(currentFloorNum < targetFloorNum) {
-							//エレベーターの上端の折り返し階よりも上に目的の階があるため、その階まで上昇する。
-							steps += targetFloorNum - currentFloorNum;
-							return {steps: steps, queuePos: queuePos};
-						}
-						else {
-							//エレベーターの向きが下に変わる。
-							currentDirectionNum = -1;
-							if(currentFloorNum == targetFloorNum && targetDirectionNum == -1) return {steps: steps, queuePos: -1};
-						}
-					}
-					else if(currentDirectionNum == -1 && currentFloorNum < elevatorQueue[1]) {
-						//エレベーターが下端の折り返し階に到着
-						if(currentFloorNum > targetFloorNum) {
-							//エレベーターの下端の折り返し階よりも下に目的の階があるため、その階まで下降する。
-							steps += currentFloorNum - targetFloorNum;
-							return {steps: steps, queuePos: queuePos};
-						}
-						else {
-							//エレベーターの向きが上に変わる。
-							currentDirectionNum = 1;
-							if(currentFloorNum == targetFloorNum && targetDirectionNum == 1) return {steps: steps, queuePos: -1};
-						}
-					}
-				}
-				elevatorQueue.shift();
-				queuePos++;
-				steps += 5; //エレベーターが停止中は5ステップ消費
-			}
-
-			//予約リストが空になった（既に空）ので目的の階まで向かう。
-			steps += Math.abs(targetFloorNum - currentFloorNum);
-			return {steps: steps, queuePos: queuePos};
-		}
-
-		/**
 		 * 目的の階に向かうのに最適なエレベーター（所要ステップ数が最小のエレベーター）のインデックス番号を返す。
 		 * @param targetFloorNum 目的の階
 		 * @param direction エレベーターが目的の階に停止する際のエレベーターの向き。"up"又は"down"のいずれか。
 		 * @returns 最適なエレベーターのインデックス番号、所要ステップ数、予約リストに入れるべき場所を含むオブジェクト
 		 */
-		function calcBestElevator(targetFloorNum: number, direction: Direction): BestElevatorData {
+		function calcBestElevator(thisClass: MyElevatorSagaSolution, targetFloorNum: number, direction: Direction): BestElevatorData {
 			if(direction == "stopped") return {index: -1, steps: -1, queuePos: -1};
-			const firstElevatorData: StepData = calcElevatorSteps(0, targetFloorNum, direction);
+			const firstElevatorData: StepData = thisClass.calcElevatorSteps(elevators[0], targetFloorNum, direction);
 			let bestElevator: BestElevatorData = {index: 0, steps: firstElevatorData.steps, queuePos: firstElevatorData.queuePos};
 			for(let i = 1; i < elevators.length; i++) {
-				const currentElevatorData: StepData = calcElevatorSteps(i, targetFloorNum, direction);
+				const currentElevatorData: StepData = thisClass.calcElevatorSteps(elevators[i], targetFloorNum, direction);
 				if(currentElevatorData.steps < bestElevator.steps) bestElevator = {index: i, steps: currentElevatorData.steps, queuePos: currentElevatorData.queuePos};
 			}
 			return bestElevator;
@@ -178,7 +179,7 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 			elevator.goingUpIndicator(false);
 			elevator.goingDownIndicator(false);
 			elevator.on("floor_button_pressed", (floorNum: number) => {
-				const stepData: StepData = calcElevatorSteps(index, floorNum, elevator.currentFloor() < floorNum ? "up" : "down");
+				const stepData: StepData = this.calcElevatorSteps(elevator, floorNum, elevator.currentFloor() < floorNum ? "up" : "down");
 				callElevator(this, index, floorNum, stepData.queuePos);
 			});
 			elevator.on("stopped_at_floor", (floorNum: number) => {
@@ -235,12 +236,12 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 		floors.forEach((floor: Floor, index: number) => {
 			floor.on("up_button_pressed", () => {
 				this.floorButtons[index].up = true;
-				const bestElevatorData: BestElevatorData = calcBestElevator(index, "up");
+				const bestElevatorData: BestElevatorData = calcBestElevator(this, index, "up");
 				if(bestElevatorData.index >= 0) callElevator(this, bestElevatorData.index, index, bestElevatorData.queuePos);
 			});
 			floor.on("down_button_pressed", () => {
 				this.floorButtons[index].down = true;
-				const bestElevatorData: BestElevatorData = calcBestElevator(index, "down");
+				const bestElevatorData: BestElevatorData = calcBestElevator(this, index, "down");
 				if(bestElevatorData.index >= 0) callElevator(this, bestElevatorData.index, index, bestElevatorData.queuePos);
 			});
 		});
@@ -255,4 +256,33 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 	 */
 	public update(dt: number, elevators: Elevator[], floors: Floor[]): void {
 	}
+}
+
+if(require.main == module) {
+	//デバッグコード
+	const INITIAL_ELEVATOR_FLOOR_NUM: number = 0;
+	const INITIAL_ELEVATOR_DIRECTION: Direction = "up";
+	const INITIAL_ELEVATOR_QUEUE: number[] = [1, 2, 3];
+	const TARGET_FLOOR_NUM: number = 4;
+	const TARGET_DIRECTION: Direction = "down";
+
+	console.debug("");
+	console.debug("================");
+	console.debug("INITIAL STATUS");
+	console.debug("----------------");
+	console.debug(`Initial elevator floor num: ${INITIAL_ELEVATOR_FLOOR_NUM}`);
+	console.debug(`Initial elevator direction: ${INITIAL_ELEVATOR_DIRECTION}`);
+	console.debug(`Initial elevator queue: [${INITIAL_ELEVATOR_QUEUE}]`);
+	console.debug("================");
+	const mySolution: MyElevatorSagaSolution = new MyElevatorSagaSolution();
+	const testElevator: TestElevator = new TestElevator(INITIAL_ELEVATOR_FLOOR_NUM, INITIAL_ELEVATOR_DIRECTION, INITIAL_ELEVATOR_QUEUE);
+	const stepData: StepData = mySolution.calcElevatorSteps(testElevator, TARGET_FLOOR_NUM, TARGET_DIRECTION);
+	console.debug("CALCULATE RESULTS");
+	console.debug("----------------");
+	console.debug(`Calculated steps: ${stepData.steps}`);
+	console.debug(`Calculated queue pos: ${stepData.queuePos}`);
+	testElevator.destinationQueue.splice(stepData.queuePos, 0, TARGET_FLOOR_NUM);
+	console.debug(`Updated elevator queue: ${testElevator.destinationQueue}`);
+	console.debug("================");
+	console.debug("");
 }
