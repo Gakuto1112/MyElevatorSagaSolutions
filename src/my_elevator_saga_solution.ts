@@ -2,9 +2,19 @@ import { Direction } from "./apis/global_type";
 import { Elevator, ElevatorSaga, Floor } from "./apis/elevator_saga";
 
 /**
+ * 各階の上下ボタンの状態を保持する構造体
+ */
+export interface ButtonData {
+	/** 上ボタン */
+	up: boolean;
+	/** 下ボタン */
+	down: boolean;
+}
+
+/**
  * `getElevatorSteps()`で返されるデータ
  */
-interface StepData {
+export interface StepData {
 	/**
 	 * エレベーターが指定した階に到着するまでに要するステップ数
 	 */
@@ -16,11 +26,16 @@ interface StepData {
 	queuePos: number;
 }
 
-class MyElevatorSagaSolution implements ElevatorSaga {
+export class MyElevatorSagaSolution implements ElevatorSaga {
 	/**
 	 * `getElevatorSteps()`での停車時に加算するステップ数
 	 */
 	private readonly ELEVATOR_STOP_STEPS: number = 5;
+
+	/**
+	 * 各階の上下ボタンの状態
+	 */
+	private readonly FloorButtons: ButtonData[] = [];
 
 	/**
 	 * 指定したエレベーターが指定したフロアまで到着するのに要するステップ数やキューに入れる位置を算出する。
@@ -28,14 +43,14 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 	 * @param targetFloorNum 目的の階の番号
 	 * @returns 算出結果データ
 	 */
-	private getElevatorSteps(elevator: Elevator, targetFloorNum: number, direction: Direction): StepData {
+	public getElevatorSteps(elevator: Elevator, targetFloorNum: number, direction: Direction): StepData {
 		//初期化
 		let steps: number = 0;
 		const elevatorQueue: number[] = elevator.destinationQueue.map((floorNum: number) => floorNum);
 		let currentFloor: number = elevator.currentFloor();
 		if(direction == "stopped") return {steps: -1, queuePos: -1};
 		const targetDirectionNum: number = direction == "up" ? 1 : -1;
-		const currentDirection: Direction = elevator.destinationDirection();
+		const currentDirection: Direction = elevator.goingUpIndicator() ? "up" : elevator.goingDownIndicator() ? "down" : "stopped";
 		let currentDirectionNum: number = 0;
 		switch(currentDirection) {
 			case "up":
@@ -45,6 +60,7 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 				currentDirectionNum = -1;
 				break;
 			case "stopped":
+				console.log("A");
 				if(currentFloor < targetFloorNum) currentDirectionNum = 1;
 				else if(currentFloor > targetFloorNum) currentDirectionNum = -1;
 				else return {steps: 0, queuePos: 0};
@@ -65,16 +81,16 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 			steps += this.ELEVATOR_STOP_STEPS;
 			if(elevatorQueue.length >= 2) {
 				if(currentDirectionNum == 1 && elevatorQueue[0] > elevatorQueue[1]) {
-					if(currentFloor < targetFloorNum && currentDirectionNum == targetDirectionNum) {
-						steps += targetFloorNum - currentFloor + 1;
+					if(currentFloor < targetFloorNum && currentDirectionNum != targetDirectionNum) {
+						steps += targetFloorNum - currentFloor;
 						queuePos++;
 						return {steps: steps, queuePos: queuePos};
 					}
 					currentDirectionNum = -1; //エレベーターの向きが下に変わる
 				}
 				else if(currentDirectionNum == -1 && elevatorQueue[0] < elevatorQueue[1]) {
-					if(currentFloor > targetDirectionNum && currentDirectionNum == targetDirectionNum) {
-						steps += currentFloor - targetFloorNum + 1;
+					if(currentFloor > targetDirectionNum && currentDirectionNum != targetDirectionNum) {
+						steps += currentFloor - targetFloorNum;
 						queuePos++;
 						return {steps: steps, queuePos: queuePos};
 					}
@@ -86,8 +102,25 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 		}
 
 		//エレベーターが目的の階に向かう
-		steps += Math.abs(targetFloorNum - currentFloor) + 1;
+		steps += Math.abs(targetFloorNum - currentFloor);
 		return {steps: steps, queuePos: queuePos};
+	}
+
+	/**
+	 * エレベーターを手配する。
+	 * @param elevator 手配対象のエレベーター
+	 * @param destinationFloorNum 呼び出し先の階
+	 * @param queuePos 予約リストに挿入する場所
+	 * @param direction エレベーターを動かす方向
+	 */
+	public callElevator(elevator: Elevator, destinationFloorNum: number, queuePos: number): void {
+		if(elevator.destinationQueue.length == 0) {
+			const currentPos: number = elevator.currentFloor();
+			if(currentPos < destinationFloorNum) elevator.goingUpIndicator(true);
+			else if(currentPos > destinationFloorNum) elevator.goingDownIndicator(true);
+		}
+		elevator.destinationQueue.splice(queuePos, 0, destinationFloorNum);
+		elevator.checkDestinationQueue();
 	}
 
 	/**
@@ -96,16 +129,62 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 	 * @param floors このチャレンジにある各階のオブジェクトの配列
 	 */
 	public init(elevators: Elevator[], floors: Floor[]): void {
+		for(let i = 0; i < floors.length; i++) this.FloorButtons.push({up: false, down: false});
 		elevators.forEach((elevator: Elevator) => {
+			elevator.goingUpIndicator(false);
+			elevator.goingDownIndicator(false);
 			elevator.on("floor_button_pressed", (floorNum: number) => {
 				const currentFloor: number = elevator.currentFloor();
 				const stepData: StepData = this.getElevatorSteps(elevator, floorNum, floorNum > currentFloor ? "up" : "down");
-				elevator.destinationQueue.splice(stepData.queuePos, 0, floorNum);
-				elevator.checkDestinationQueue();
+				this.callElevator(elevator, floorNum, stepData.queuePos);
+			});
+			elevator.on("stopped_at_floor", (floorNum: number) => {
+				if(elevator.destinationQueue.length >= 1) {
+					if(floorNum < elevator.destinationQueue[0]) {
+						elevator.goingUpIndicator(true);
+						elevator.goingDownIndicator(false);
+					}
+					else if(floorNum > elevator.destinationQueue[0]) {
+						elevator.goingUpIndicator(false);
+						elevator.goingDownIndicator(true);
+					}
+				}
+				else if(elevator.goingDownIndicator()) {
+					if(this.FloorButtons[floorNum].down) {
+						elevator.goingUpIndicator(false);
+						elevator.goingDownIndicator(true);
+						this.FloorButtons[floorNum].down = false;
+					}
+					else if(this.FloorButtons[floorNum].up) {
+						elevator.goingUpIndicator(true);
+						elevator.goingDownIndicator(false);
+						this.FloorButtons[floorNum].up = false;
+					}
+					else {
+						elevator.goingUpIndicator(false);
+						elevator.goingDownIndicator(false);
+					}
+				}
+				else {
+					if(this.FloorButtons[floorNum].up) {
+						elevator.goingUpIndicator(true);
+						elevator.goingDownIndicator(false);
+						this.FloorButtons[floorNum].up = false;
+					}
+					else if(this.FloorButtons[floorNum].down) {
+						elevator.goingUpIndicator(false);
+						elevator.goingDownIndicator(true);
+						this.FloorButtons[floorNum].down = false;
+					}
+					else {
+						elevator.goingUpIndicator(false);
+						elevator.goingDownIndicator(false);
+					}
+				}
 			});
 		});
 		floors.forEach((floor: Floor) => {
-			function callElevator(thisClass: MyElevatorSagaSolution, floor: number, direction: Direction): void {
+			function selectElevator(thisClass: MyElevatorSagaSolution, floor: number, direction: Direction): void {
 				//最適なエレベーターを求める。
 				let bestElevatorNum: number = 0;
 				let stepData: StepData = thisClass.getElevatorSteps(elevators[0], floor, direction);
@@ -116,14 +195,17 @@ class MyElevatorSagaSolution implements ElevatorSaga {
 						stepData = newStepData;
 					}
 				}
-
-				//エレベーターを手配
-				elevators[bestElevatorNum].destinationQueue.splice(stepData.queuePos, 0, floor);
-				elevators[bestElevatorNum].checkDestinationQueue();
+				thisClass.callElevator(elevators[bestElevatorNum], floor, stepData.queuePos);
 			}
 
-			floor.on("up_button_pressed", () => callElevator(this, floor.floorNum(), "up"));
-			floor.on("down_button_pressed", () => callElevator(this, floor.floorNum(), "down"));
+			floor.on("up_button_pressed", () => {
+				this.FloorButtons[floor.floorNum()].up = true;
+				selectElevator(this, floor.floorNum(), "up");
+			});
+			floor.on("down_button_pressed", () => {
+				this.FloorButtons[floor.floorNum()].down = true;
+				selectElevator(this, floor.floorNum(), "down");
+			});
 		});
 	}
 

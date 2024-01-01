@@ -58,7 +58,7 @@ export interface Elevator {
 	 * @param indicatorLit 設定するエレベーターの上昇表示
 	 * @returns 取得したエレベーターの上昇表示
 	 */
-	goingUpIndicator(indicatorLit: boolean): boolean;
+	goingUpIndicator(indicatorLit?: boolean): boolean;
 
 	/**
 	 * エレベーターの下降表示の状態を取得又は設定する。
@@ -66,7 +66,7 @@ export interface Elevator {
 	 * @param indicatorLit 設定するエレベーターの下降表示
 	 * @returns 取得したエレベーターの下降表示
 	 */
-	goingDownIndicator: (indicatorLit: boolean) => boolean;
+	goingDownIndicator(indicatorLit?: boolean): boolean;
 
 	/**
 	 * このエレベーターの一度に乗車可能な人数を返す。
