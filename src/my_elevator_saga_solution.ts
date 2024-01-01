@@ -159,7 +159,6 @@ export class MyElevatorSagaSolution implements ElevatorSaga {
 			if(queuePos >= 0) {
 				elevators[elevatorNum].destinationQueue.splice(queuePos, 0, targetFloorNum);
 				elevators[elevatorNum].checkDestinationQueue();
-				console.log(elevators[elevatorNum].destinationQueue);
 			}
 
 			//エレベーターの上下表示の設定
@@ -282,7 +281,7 @@ if(require.main == module) {
 	console.debug(`Calculated steps: ${stepData.steps}`);
 	console.debug(`Calculated queue pos: ${stepData.queuePos}`);
 	testElevator.destinationQueue.splice(stepData.queuePos, 0, TARGET_FLOOR_NUM);
-	console.debug(`Updated elevator queue: ${testElevator.destinationQueue}`);
+	console.debug(`Updated elevator queue: [${testElevator.destinationQueue}]`);
 	console.debug("================");
 	console.debug("");
 }
