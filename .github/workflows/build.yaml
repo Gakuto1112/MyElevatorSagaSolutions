@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - /src/my_elevator_saga_solution.ts
+      - /src/processors/**
+      - /.github/workflows/build.yaml
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+      - name: Setup Nodejs@18.7.0
+        uses: actions/setup-node@@v4.0.1
+        with:
+          node-version: 18.7.0
+          cache: npm
+      - name: Install dependent npm modules
+        run: npm install
+      - name: Compile TypeScript sources
+        run: ./node_modules/.bin/tsc
+      - name: Covert a compiled result
+        run: node ./out/processors/post_compile.js
+      - name: Upload an artifact
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          name: my-elevator-saga-solution
+          path: out/my_elevator_saga_solution_converted.js
