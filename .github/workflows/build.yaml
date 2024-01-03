@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      - /src/my_elevator_saga_solution.ts
-      - /src/processors/**
-      - /.github/workflows/build.yaml
+      - src/my_elevator_saga_solution.ts
+      - src/processors/**
+      - .github/workflows/build.yaml
 
 jobs:
   build:
