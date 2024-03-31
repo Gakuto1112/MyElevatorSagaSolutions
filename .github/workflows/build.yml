@@ -7,7 +7,7 @@ on:
     paths:
       - src/my_elevator_saga_solution.ts
       - src/processors/**
-      - .github/workflows/build.yaml
+      - .github/workflows/build.yml
 
 jobs:
   build:
